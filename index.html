@@ -1,56 +1,522 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GTA 7 — BRASIL</title>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GTA Brasil 7 — Protótipo</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Arial,sans-serif; }
-  body { background:#05070f; overflow:hidden; color:#dfe6ff; }
-  canvas { display:block; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:#05070d;font-family:'Segoe UI',Verdana,sans-serif;color:#eaf6ff}
+  #menu{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 30%,#0b1b3a 0%,#05070d 70%);z-index:20;text-align:center;padding:20px}
+  #menu h1{font-size:clamp(28px,6vw,64px);letter-spacing:4px;background:linear-gradient(90deg,#00e5ff,#7c4dff,#00e5ff);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 30px rgba(0,229,255,.35)}
+  #menu .sub{color:#8fb8d8;margin:8px 0 20px;font-size:clamp(12px,2vw,16px)}
+  .plane{font-size:42px;display:inline-block;animation:fly 12s linear infinite}
+  @keyframes fly{from{transform:translate(-55vw,0)}to{transform:translate(55vw,0)}}
+  .panel{background:rgba(10,22,45,.72);border:1px solid #1d4a6e;border-radius:14px;padding:22px 26px;max-width:700px;width:94%;box-shadow:0 0 40px rgba(0,229,255,.12)}
+  .row{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin:10px 0}
+  label{font-size:12px;letter-spacing:1px;color:#7fc7e8;display:block;margin-bottom:4px;text-transform:uppercase}
+  select{background:#081527;color:#dff4ff;border:1px solid #1d4a6e;border-radius:8px;padding:10px 12px;font-size:15px;min-width:230px;outline:none}
+  select:focus{border-color:#00e5ff}
+  .check{display:flex;align-items:center;gap:8px;font-size:13px;color:#9fd4ee;justify-content:center;margin-top:12px}
+  #btnStart{margin-top:18px;padding:14px 46px;font-size:18px;font-weight:700;letter-spacing:2px;border:none;border-radius:10px;cursor:pointer;color:#03121f;background:linear-gradient(90deg,#00e5ff,#7c4dff);box-shadow:0 0 25px rgba(0,229,255,.5);transition:transform .15s}
+  #btnStart:hover{transform:scale(1.05)}
+  #game{position:fixed;inset:0;display:none;cursor:crosshair}
+  #hud{position:fixed;inset:0;pointer-events:none;display:none;z-index:5}
+  .hudBox{position:absolute;background:rgba(4,12,26,.55);border:1px solid rgba(0,229,255,.25);border-radius:10px;padding:8px 12px;font-size:13px;backdrop-filter:blur(2px)}
+  #loc{top:14px;left:14px;max-width:340px}
+  #loc b{font-size:17px}
+  #wth{top:14px;left:50%;transform:translateX(-50%);text-align:center;min-width:170px}
+  #timeBox{top:14px;right:168px;text-align:center}
+  #speed{left:14px;bottom:14px;font-size:15px;min-width:140px}
+  #speed .num{font-size:30px;font-weight:700;color:#00e5ff}
+  #minimap{position:absolute;right:14px;bottom:14px;background:rgba(4,12,26,.6);border:1px solid rgba(0,229,255,.35);border-radius:10px;pointer-events:auto;cursor:pointer}
+  #hint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);font-size:12px;color:#7fb6d6;white-space:nowrap}
+  #help{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:15;display:none;align-items:center;justify-content:center}
+  #help .card{background:#0a1730;border:1px solid #1d4a6e;border-radius:14px;padding:30px 40px;max-width:560px;line-height:2}
+  .key{display:inline-block;background:#132c4d;border:1px solid #2b5f94;border-radius:5px;padding:1px 8px;font-family:monospace;font-size:13px;color:#9fe8ff;margin:0 2px}
+  #loading{position:fixed;inset:0;z-index:30;background:#05070d;display:none;align-items:center;justify-content:center;color:#9fe8ff;font-size:18px;flex-direction:column;gap:14px}
+</style>
+</head>
+<body>
 
-  #menu {
-    position:fixed; inset:0; z-index:50; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; background:
-      radial-gradient(ellipse at 30% 20%, #10203f 0%, #05070f 60%);
+<div id="menu">
+  <div><span class="plane">✈️</span></div>
+  <h1>GTA BRASIL 7</h1>
+  <div class="sub">Mundo aberto • Brasil inteiro em tempo real • Clima real • 27 estados • ~130 cidades</div>
+  <div class="panel">
+    <div class="row">
+      <div><label>1. Estado</label><select id="selUF"></select></div>
+      <div><label>2. Cidade (você aterrissa aqui)</label><select id="selCity"></select></div>
+    </div>
+    <div class="check"><input type="checkbox" id="chkReal" checked/> Clima REAL (Open-Meteo — sem API key). Desmarque p/ clima simulado.</div>
+    <button id="btnStart">▶ &nbsp;INICIAR JOGO</button>
+  </div>
+</div>
+
+<canvas id="game"></canvas>
+<div id="hud">
+  <div id="loc"  class="hudBox"></div>
+  <div id="wth"  class="hudBox"></div>
+  <div id="timeBox" class="hudBox"></div>
+  <div id="speed" class="hudBox"></div>
+  <canvas id="minimap" width="220" height="250"></canvas>
+  <div id="hint">WASD dirigir · SHIFT turbo · M mapa total · C próxima capital · V som · H ajuda · clique no minimapa = viagem rápida</div>
+</div>
+
+<div id="help">
+  <div class="card">
+    <h2>🕹️ Controles</h2>
+    <span class="key">W</span>/<span class="key">↑</span> acelerar · <span class="key">S</span>/<span class="key">↓</span> frear/re · <span class="key">A</span><span class="key">D</span>/<span class="key">←</span><span class="key">→</span> virar<br/>
+    <span class="key">SHIFT</span> turbo (velocidade futura) · <span class="key">M</span> ver mapa do Brasil todo<br/>
+    <span class="key">C</span> ir para a próxima capital · <span class="key">V</span> som on/off · <span class="key">H</span> fechar ajuda<br/>
+    🖱️ <b>Clique no minimapa</b> para viajar rápido para qualquer ponto do país<br/>
+    🌧️ O clima é o real da cidade em  tempo real pela internet (Open-Meteo)<br/>
+    <button id="btnHelpClose" style="margin-top:16px;padding:10px 30px;font-size:16px;border:none;border-radius:8px;cursor:pointer;background:#00e5ff;color:#03121f;font-weight:700">OK</button>
+  </div>
+</div>
+
+<div id="loading">🛰️ Carregando o Brasil… <span id="loadMsg"></span></div>
+
+<script>
+/* ==================== DADOS DO BRASIL ==================== */
+const ESTADOS = [
+ ["AC","Acre",-5],["AL","Alagoas",-3],["AP","Amapá",-3],["AM","Amazonas",-4],
+ ["BA","Bahia",-3],["CE","Ceará",-3],["DF","Distrito Federal",-3],["ES","Espírito Santo",-3],
+ ["GO","Goiás",-3],["MA","Maranhão",-3],["MT","Mato Grosso",-4],["MS","Mato Grosso do Sul",-4],
+ ["MG","Minas Gerais",-3],["PA","Pará",-3],["PB","Paraíba",-3],["PR","Paraná",-3],
+ ["PE","Pernambuco",-3],["PI","Piauí",-3],["RJ","Rio de Janeiro",-3],["RN","Rio Grande do Norte",-3],
+ ["RS","Rio Grande do Sul",-3],["RO","Rondônia",-4],["RR","Roraima",-4],["SC","Santa Catarina",-3],
+ ["SP","São Paulo",-3],["SE","Sergipe",-3],["TO","Tocantins",-3]
+];
+
+const CID = {
+ AC:[["Rio Branco",-9.97,-67.81],["Cruzeiro do Sul",-7.63,-72.67],["Sena Madureira",-9.06,-68.66],["Tarauacá",-8.16,-70.77],["Feijó",-8.16,-70.35]],
+ AL:[["Maceió",-9.67,-35.74],["Arapiraca",-9.75,-36.66],["Palmeira dos Índios",-9.41,-36.63],["Rio Largo",-9.48,-35.86],["União dos Palmares",-9.16,-36.03]],
+ AP:[["Macapá",0.04,-51.07],["Santana",0.04,-51.18],["Laranjal do Jari",-0.84,-52.52],["Oiapoque",3.84,-51.83],["Mazagão",-0.12,-51.28]],
+ AM:[["Manaus",-3.12,-60.02],["Parintins",-2.63,-56.74],["Itacoatiara",-3.14,-58.44],["Manacapuru",-3.30,-60.62],["Tefé",-3.36,-64.71],["Tabatinga",-4.23,-69.94],["Humaitá",-7.51,-63.02]],
+ BA:[["Salvador",-12.97,-38.51],["Feira de Santana",-12.27,-38.97],["Vitória da Conquista",-14.86,-40.84],["Ilhéus",-14.79,-39.04],["Juazeiro",-9.42,-40.50],["Barreiras",-12.15,-44.99],["Porto Seguro",-16.45,-39.06]],
+ CE:[["Fortaleza",-3.72,-38.54],["Sobral",-3.69,-40.35],["Juazeiro do Norte",-7.21,-39.32],["Crato",-7.23,-39.41],["Iguatu",-6.36,-39.30],["Quixadá",-4.97,-39.01]],
+ DF:[["Brasília",-15.79,-47.88],["Taguatinga",-15.83,-48.06],["Ceilândia",-15.82,-48.11],["Planaltina",-15.62,-47.65],["Gama",-16.02,-48.07]],
+ ES:[["Vitória",-20.32,-40.34],["Vila Velha",-20.33,-40.29],["Serra",-20.12,-40.31],["Cariacica",-20.26,-40.42],["Linhares",-19.39,-40.07],["Colatina",-19.54,-40.63]],
+ GO:[["Goiânia",-16.68,-49.25],["Aparecida de Goiânia",-16.82,-49.24],["Anápolis",-16.33,-48.95],["Rio Verde",-17.80,-50.92],["Catalão",-18.17,-47.95],["Itumbiara",-18.42,-49.22]],
+ MA:[["São Luís",-2.53,-44.30],["Imperatriz",-5.53,-47.49],["Caxias",-4.86,-43.36],["Timon",-5.09,-42.84],["Balsas",-7.53,-46.04],["Codó",-4.46,-43.89]],
+ MT:[["Cuiabá",-15.60,-56.10],["Várzea Grande",-15.65,-56.13],["Rondonópolis",-16.47,-54.64],["Sinop",-11.86,-55.51],["Cáceres",-16.07,-57.68],["Tangará da Serra",-14.62,-57.49]],
+ MS:[["Campo Grande",-20.47,-54.62],["Dourados",-22.22,-54.81],["Três Lagoas",-20.79,-51.70],["Corumbá",-19.01,-57.65],["Ponta Porã",-22.54,-55.73],["Naviraí",-23.06,-54.19]],
+ MG:[["Belo Horizonte",-19.92,-43.94],["Uberlândia",-18.92,-48.28],["Contagem",-19.91,-44.05],["Juiz de Fora",-21.76,-43.35],["Montes Claros",-16.73,-43.86],["Governador Valadares",-18.85,-41.95],["Uberaba",-19.75,-47.93]],
+ PA:[["Belém",-1.46,-48.50],["Ananindeua",-1.37,-48.38],["Santarém",-2.44,-54.70],["Marabá",-5.37,-49.12],["Altamira",-3.20,-52.21],["Castanhal",-1.29,-47.93],["Itaituba",-4.28,-55.98]],
+ PB:[["João Pessoa",-7.12,-34.86],["Campina Grande",-7.23,-35.88],["Santa Rita",-7.11,-34.98],["Patos",-7.02,-37.28],["Sousa",-6.75,-38.23],["Cajazeiras",-6.89,-38.56]],
+ PR:[["Curitiba",-25.43,-49.27],["Londrina",-23.31,-51.16],["Maringá",-23.43,-51.94],["Ponta Grossa",-25.10,-50.16],["Cascavel",-24.96,-53.46],["Foz do Iguaçu",-25.55,-54.59],["Paranaguá",-25.52,-48.51]],
+ PE:[["Recife",-8.05,-34.88],["Olinda",-8.01,-34.85],["Jaboatão dos Guararapes",-8.11,-35.02],["Caruaru",-8.28,-35.98],["Petrolina",-9.39,-40.51],["Garanhuns",-8.89,-36.49]],
+ PI:[["Teresina",-5.09,-42.80],["Parnaíba",-2.90,-41.78],["Picos",-7.08,-41.47],["Floriano",-6.77,-43.02],["Piripiri",-4.27,-41.77],["Campo Maior",-4.83,-42.17]],
+ RJ:[["Rio de Janeiro",-22.91,-43.17],["Niterói",-22.88,-43.10],["Duque de Caxias",-22.79,-43.31],["Nova Iguaçu",-22.76,-43.45],["Petrópolis",-22.51,-43.18],["Campos dos Goytacazes",-21.75,-41.33],["Volta Redonda",-22.52,-44.10]],
+ RN:[["Natal",-5.79,-35.21],["Mossoró",-5.19,-37.34],["Parnamirim",-5.92,-35.26],["Caicó",-6.46,-37.10],["Assu",-5.58,-36.91],["Currais Novos",-6.26,-36.51]],
+ RS:[["Porto Alegre",-30.03,-51.23],["Caxias do Sul",-29.17,-51.18],["Pelotas",-31.77,-52.34],["Canoas",-29.92,-51.18],["Santa Maria",-29.68,-53.81],["Passo Fundo",-28.26,-52.41],["Rio Grande",-32.03,-52.10]],
+ RO:[["Porto Velho",-8.76,-63.90],["Ji-Paraná",-10.88,-61.95],["Ariquemes",-9.91,-63.03],["Vilhena",-12.74,-60.15],["Cacoal",-11.44,-61.45],["Rolim de Moura",-11.50,-61.78]],
+ RR:[["Boa Vista",2.82,-60.67],["Rorainópolis",0.94,-60.42],["Caracaraí",1.82,-61.13],["Mucajaí",2.44,-60.91],["Pacaraima",4.49,-61.15]],
+ SC:[["Florianópolis",-27.59,-48.55],["Joinville",-26.30,-48.85],["Blumenau",-26.92,-49.07],["Chapecó",-27.10,-52.62],["Criciúma",-28.68,-49.37],["Itajaí",-26.91,-48.66]],
+ SP:[["São Paulo",-23.55,-46.63],["Guarulhos",-23.46,-46.53],["Campinas",-22.91,-47.06],["Santos",-23.96,-46.33],["São José dos Campos",-23.18,-45.89],["Ribeirão Preto",-21.18,-47.81],["Sorocaba",-23.50,-47.46],["Presidente Prudente",-22.13,-51.39]],
+ SE:[["Aracaju",-10.91,-37.07],["Nossa Senhora do Socorro",-10.86,-37.06],["Lagarto",-10.92,-37.65],["Itabaiana",-10.69,-37.43],["Estância",-11.27,-37.44]],
+ TO:[["Palmas",-10.18,-48.33],["Araguaína",-7.19,-48.21],["Gurupi",-11.73,-49.07],["Porto Nacional",-10.71,-48.42],["Paraíso do Tocantins",-10.18,-48.87]]
+};
+
+/* Contorno simplificado do Brasil (fallback se o GeoJSON baixar) */
+const BR_OUTLINE = [
+ [4.4,-51.6],[3.5,-50.2],[1.5,-49.2],[-0.5,-47.9],[-2.5,-44.6],[-3.7,-39.4],[-5.1,-36.2],
+ [-7.1,-35.0],[-8.1,-35.2],[-9.7,-36.1],[-12.0,-37.5],[-13.0,-38.9],[-15.9,-39.2],[-17.5,-39.3],
+ [-19.6,-39.8],[-21.8,-41.2],[-23.0,-43.4],[-23.5,-44.8],[-24.0,-46.5],[-25.6,-48.6],[-27.6,-48.7],
+ [-29.3,-49.9],[-31.8,-52.2],[-33.7,-53.5],[-32.6,-54.5],[-30.2,-57.7],[-27.6,-58.1],[-25.3,-54.7],
+ [-24.5,-54.4],[-22.6,-55.7],[-20.4,-56.6],[-19.0,-57.8],[-18.0,-58.2],[-16.8,-57.8],[-16.0,-58.6],
+ [-15.0,-58.8],[-14.5,-60.1],[-13.5,-60.8],[-12.5,-60.2],[-11.5,-61.6],[-10.8,-63.6],[-9.8,-65.2],
+ [-9.0,-66.1],[-8.0,-69.6],[-9.2,-71.0],[-10.0,-71.6],[-10.3,-73.0],[-9.5,-73.5],[-7.0,-73.8],
+ [-5.0,-73.0],[-4.0,-70.0],[-3.5,-69.0],[-2.0,-69.6],[-0.2,-69.0],[1.0,-68.2],[2.5,-67.6],[3.8,-67.0],
+ [4.8,-62.0],[4.6,-60.0],[4.4,-53.5]
+];
+
+/* ==================== PROJEÇÃO GEOGRÁFICA ==================== */
+const LAT_MAX = 6, LAT_MIN = -34, LON_MIN = -74, LON_MAX = -34, DEG = 111320;
+function project(lat,lng){
+  return { x:(lng-LON_MIN)*DEG*Math.cos(lat*Math.PI/180), y:(LAT_MAX-lat)*DEG };
+}
+function unproject(x,y){
+  const lat = LAT_MAX - y/DEG;
+  const lng = x/(DEG*Math.cos(lat*Math.PI/180)) + LON_MIN;
+  return {lat,lng};
+}
+
+/* ==================== CONSTRUÇÃO DO MUNDO ==================== */
+const CITIES = [];
+ESTADOS.forEach(([uf,nome,tz])=>{
+  CID[uf].forEach(([cname,lat,lng],i)=>{
+    const p = project(lat,lng);
+    CITIES.push({ name:cname, uf, ufName:nome, tz, lat, lng, x:p.x, y:p.y, capital:(i===0), size:i===0?3:2 });
+  });
+});
+
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+
+/* Cidades recebem "semente" p/ prédios serem sempre iguais (determinístico) */
+CITIES.forEach((c,i)=>{ c.seed = i*7919+7; });
+
+/* Estrada: cada capital conecta às 3 capitais mais próximas + todas conectam a Brasília */
+function dist(a,b){ return Math.hypot(a.x-b.x,a.y-b.y); }
+const caps = CITIES.filter(c=>c.capital);
+const ROADS = [];
+caps.forEach(ca=>{
+  let sorted = caps.filter(o=>o!==ca).map(o=>({o,d:dist(ca,o)})).sort((a,b)=>a.d-b.d).slice(0,3);
+  sorted.forEach(s=>ROADS.push([ca,s.o]));
+});
+const bsb = CITIES.find(c=>c.uf==="DF"&&c.capital);
+caps.forEach(ca=>{ if(ca!==bsb) ROADS.push([ca,bsb]); });
+
+/* GeoJSON dos estados (tentativa). Fallback: contorno + capitais */
+let STATEPOLYS = null; // [{uf, name, rings:[[{x,y}]]}]
+async function loadGeo(){
+  const urls = [
+    "https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson",
+    "https://raw.githubusercontent.com/tbrugz/geodata-br/master/geojson/geojs-27-mun.json"
+  ];
+  for(const u of urls){
+    try{
+      const r = await fetch(u);
+      if(!r.ok) continue;
+      const gj = await r.json();
+      const tmp = {};
+      (gj.features||[]).forEach(f=>{
+        const pr = f.properties||{};
+        const sigla = (pr.sigla||pr.UF||pr.uf||"").toUpperCase();
+        const name = pr.name||pr.nome||sigla;
+        if(!sigla) return;
+        if(!tmp[sigla]) tmp[sigla]={uf:sigla,name,rings:[]};
+        const geo = f.geometry||{};
+        if(geo.type==="Polygon") addRings(tmp[sigla].rings, [geo.coordinates]);
+        else if(geo.type==="MultiPolygon") addRings(tmp[sigla].rings, geo.coordinates);
+      });
+      // merge de municípios do mesmo estado em anéis únicos
+      const out = Object.values(tmp).map(s=>{
+        const rings=s.rings.map(ring=>ring.map(([lng,lat])=>{ const p=project(lat,lng); return {x:p.x,y:p.y}; }));
+        return {uf:s.uf,name:s.name,rings};
+      });
+      if(out.length>=20){ STATEPOLYS=out; return; }
+    }catch(e){}
   }
-  #menu h1 { font-size:54px; letter-spacing:4px; color:#8df5ff; text-shadow:0 0 25px #00e5ff, 0 0 60px #004cff; }
-  #menu h1 span { color:#ffc93c; text-shadow:0 0 25px #ff9d00; }
-  #menu h2 { font-size:15px; color:#7fa8d8; margin-top:4px; letter-spacing:8px; }
-  .painel { background:rgba(10,18,38,.85); border:1px solid #1d3a6b; border-radius:10px; padding:24px 30px; margin-top:26px; width:460px; }
-  .painel label { display:block; font-size:12px; color:#7fa8d8; margin:12px 0 4px; letter-spacing:2px; }
-  .painel select { width:100%; background:#0a1226; color:#dfe6ff; border:1px solid #23416f; padding:10px; border-radius:6px; font-size:15px; }
-  #btnIniciar {
-    margin-top:20px; width:100%; padding:14px; font-size:18px; font-weight:bold; letter-spacing:3px;
-    background:linear-gradient(90deg,#00c6ff,#0072ff); color:#fff; border:0; border-radius:8px; cursor:pointer;
-    box-shadow:0 0 20px #0072ff88; transition:.2s;
+}
+function addRings(arr, polys){
+  polys.forEach(poly=>{ if(poly&&poly[0]) arr.push(poly[0]); });
+}
+
+/* ==================== ESTADO DO JOGO ==================== */
+const G = {
+  running:false, zoom:4, tzoom:4, cam:{x:0,y:0},
+  car:{x:0,y:0,vx:0,vy:0,ang:-Math.PI/2,spd:0,trail:[]},
+  keys:{}, boost:false, sound:true, overview:false,
+  weather:{code:0,label:"—",temp:0,wind:0,rain:0,thunder:false,real:false,ts:0},
+  spawn:{c:null}, lastCity:null, tzNow:-3,
+  rainDrops:[], flash:0, time:0
+};
+
+/* ==================== CANVAS / UI ==================== */
+const cv = document.getElementById("game"), ctx = cv.getContext("2d");
+const mm  = document.getElementById("minimap"), mctx = mm.getContext("2d");
+const MM_W=220, MM_H=250;
+let W=0,H=0,DPR=1, RAF=0, lastT=0;
+
+function resize(){
+  DPR = Math.min(window.devicePixelRatio||1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  cv.width = W*DPR; cv.height = H*DPR;
+  cv.style.width = W+"px"; cv.style.height = H+"px";
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  G.tzoom = G.overview ? overviewZoom() : 4;
+}
+function overviewZoom(){
+  const spanX=(LON_MAX-LON_MIN)*DEG, spanY=(LAT_MAX-LAT_MIN)*DEG;
+  return Math.min(W/spanX, H/spanY)*0.96;
+}
+window.addEventListener("resize", resize);
+
+/* ==================== MENU ==================== */
+const selUF=document.getElementById("selUF"), selCity=document.getElementById("selCity");
+function initMenu(){
+  ESTADOS.forEach(([uf,nome])=>{
+    const o=document.createElement("option"); o.value=uf; o.textContent=nome+" ("+uf+")"; selUF.appendChild(o);
+  });
+  selUF.onchange=fillCities; fillCities();
+}
+function fillCities(){
+  selCity.innerHTML="";
+  CID[selUF.value].forEach(([n])=>{
+    const o=document.createElement("option"); o.value=n; o.textContent=n; selCity.appendChild(o);
+  });
+}
+
+/* ==================== CLIMA REAL (Open-Meteo, grátis, sem key) ==================== */
+function codeInfo(code){
+  if(code===0) return {l:"☀️ Ensolarado",r:0};
+  if(code===1) return {l:"🌤 Quase limpo",r:0};
+  if(code===2) return {l:"⛅ Parcial nublado",r:0};
+  if(code===3) return {l:"☁️ Nublado",r:0};
+  if(code===45||code===48) return {l:"🌫 Nevoeiro",r:0};
+  if(code>=51&&code<=57) return {l:"🌦 Chuva fraca",r:.35};
+  if(code>=61&&code<=67) return {l:"🌧 Chuva",r:.7};
+  if(code>=71&&code<=77) return {l:"❄️ Neve",r:.6};
+  if(code>=80&&code<=82) return {l:"🌧 Pancada",r:.85};
+  if(code>=85&&code<=86) return {l:"❄️ Neve",r:.6};
+  if(code>=95) return {l:"⛈ Tempestade",r:1};
+  return {l:"☁️ Nublado",r:.2};
+}
+async function fetchWeather(lat,lng){
+  const useReal = document.getElementById("chkReal").checked;
+  if(!useReal){ setSimWeather(); return; }
+  if(Date.now()-G.weather.ts < 30000) return;
+  G.weather.ts = Date.now();
+  try{
+    const ctl = new AbortController();
+    const t = setTimeout(()=>ctl.abort(), 6000);
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}&current_weather=true&timezone=auto`, {signal:ctl.signal});
+    clearTimeout(t);
+    const d = await r.json();
+    const cur = d.current_weather||d.current||{};
+    const code = cur.weathercode!=null?cur.weathercode:(cur.weather_code!=null?cur.weather_code:2);
+    const info = codeInfo(code);
+    G.weather.code=code; G.weather.label=info.l; G.weather.rain=info.r;
+    G.weather.temp=Math.round(cur.temperature_2m??0);
+    G.weather.wind=Math.round(cur.windspeed_10m??0);
+    G.weather.thunder = code>=95;
+    G.weather.real = true;
+  }catch(e){
+    setSimWeather();
   }
-  #btnIniciar:hover { transform:scale(1.03); box-shadow:0 0 35px #00c6ffaa; }
-  #btnIniciar:disabled { opacity:.4; cursor:wait; }
-  #infoClima { font-size:12px; color:#8df5ff; margin-top:12px; text-align:center; min-height:16px; }
-  #dica { font-size:11px; color:#48638f; margin-top:14px; text-align:center; }
+}
+function setSimWeather(){
+  const pool = [{l:"☀️ Ensolarado",r:0,code:0},{l:"⛅ Parcial nublado",r:0,code:2},{l:"☁️ Nublado",r:0,code:3},{l:"🌦 Chuva fraca",r:.35,code:51},{l:"🌧 Chuva",r:.75,code:61},{l:"⛈ Tempestade",r:1,code:95}];
+  const w = pool[Math.floor(Math.random()*pool.length)];
+  G.weather.label=w.l; G.weather.rain=w.r; G.weather.code=w.code;
+  G.weather.temp=Math.round(18+Math.random()*15); G.weather.wind=Math.round(Math.random()*25);
+  G.weather.thunder=w.code>=95; G.weather.real=false;
+}
+setInterval(()=>{ if(G.running){ const nc=nearestCity(); if(nc) fetchWeather(nc.lat,nc.lng); } }, 40000);
 
-  #hud { position:fixed; inset:0; z-index:10; pointer-events:none; display:none; }
-  .hudTop { position:absolute; top:14px; left:14px; background:rgba(5,10,25,.62); padding:10px 14px; border-radius:8px; border:1px solid #1d3a6b; font-size:15px; line-height:1.7; }
-  .hudTop b { color:#8df5ff; }
-  #estrelas { color:#ffc93c; font-size:17px; letter-spacing:3px; }
-  .hudDir { position:absolute; top:14px; right:14px; text-align:right; background:rgba(5,10,25,.62); padding:10px 14px; border-radius:8px; border:1px solid #1d3a6b; font-size:14px; }
-  .hudDir .g { font-size:22px; font-weight:bold; color:#8df5ff; }
-  .hudDir .w { color:#9ab6e2; font-size:13px; margin-top:2px; }
-  .hudBottom { position:absolute; bottom:16px; right:16px; background:rgba(5,10,25,.62); padding:8px 16px; border-radius:8px; text-align:right; }
-  #vel { font-size:34px; font-weight:bold; color:#ffc93c; font-variant-numeric:tabular-nums; }
-  #nitro { color:#8df5ff; font-size:12px; margin-top:2px; }
-  #objMissao { position:absolute; top:16px; left:50%; transform:translateX(-50%); background:rgba(5,10,25,.7); padding:8px 18px; border-radius:8px; border:1px solid #3f7fbf; font-size:14px; text-align:center; display:none; }
-  #objMissao b { color:#ffc93c; }
-  #toast { position:absolute; bottom:90px; left:50%; transform:translateX(-50%); font-size:17px; text-align:center; color:#fff; text-shadow:0 0 12px #000; transition:opacity .4s; opacity:0; }
-  #avisoA { position:absolute; bottom:120px; left:50%; transform:translateX(-50%); font-size:22px; color:#8df5ff; letter-spacing:3px; text-shadow:0 0 20px #00e5ff; display:none; }
-  #cross { position:absolute; top:50%; left:50%; margin:-6px 0 0 -6px; width:12px; height:12px; border:1px solid #fff8; border-radius:50%; display:none; }
+/* ==================== SOM (WebAudio) ==================== */
+let AC=null, engOsc=null, engGain=null, lpF=null, rainSrc=null, rainGain=null, noiseBuf=null;
+function initAudio(){
+  if(AC) return;
+  try{
+    AC = new (window.AudioContext||window.webkitAudioContext)();
+    engOsc = AC.createOscillator(); engOsc.type="sawtooth"; engOsc.frequency.value=80;
+    lpF = AC.createBiquadFilter(); lpF.type="lowpass"; lpF.frequency.value=300;
+    engGain = AC.createGain(); engGain.gain.value=0;
+    engOsc.connect(lpF); lpF.connect(engGain); engGain.connect(AC.destination); engOsc.start();
+    const len = AC.sampleRate*2; noiseBuf = AC.createBuffer(1,len,AC.sampleRate);
+    const ch = noiseBuf.getChannelData(0);
+    for(let i=0;i<len;i++) ch[i]=Math.random()*2-1;
+    rainSrc = AC.createBufferSource(); rainSrc.buffer=noiseBuf; rainSrc.loop=true;
+    rainGain = AC.createGain(); rainGain.gain.value=0;
+    const rlp = AC.createBiquadFilter(); rlp.type="lowpass"; rlp.frequency.value=900;
+    rainSrc.connect(rlp); rlp.connect(rainGain); rainGain.connect(AC.destination); rainSrc.start();
+  }catch(e){}
+}
+function updateAudio(){
+  if(!AC) return;
+  if(G.sound){
+    if(AC.state==="suspended") AC.resume();
+    const sp = Math.abs(G.car.spd);
+    engGain.gain.value = 0.012 + Math.min(0.075, sp/7000);
+    lpF.frequency.value = 220 + Math.min(1600, sp*1.2);
+    engOsc.frequency.value = 70 + sp*0.15;
+    rainGain.gain.value = G.weather.rain*0.10;
+  } else {
+    engGain.gain.value = 0; rainGain.gain.value = 0;
+  }
+}
 
-  #radar { position:absolute; bottom:16px; left:16px; border-radius:8px; border:1px solid #1d3a6b; background:rgba(5,10,25,.55); }
-  #flash { position:fixed; inset:0; background:#fff; opacity:0; z-index:30; pointer-events:none; }
-  #fade { position:fixed; inset:0; background:#000; opacity:0; z-index:40; pointer-events:none; transition:opacity .9s; }
-  #loading { position:fixed; inset:0; z-index:45; background:#02040a; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:18px; letter-spacing:2px; color:#8df5ff; display:none; }
-  #loading .sp { width:46px; height:46px; border:4px solid #1d3a6b; border-top-color:#00e5ff; border-radius:50%; animation:gir 1s linear infinite; margin-bottom:18px; }
-  @keyframes gir { to { transform:rotate(360deg); } }
+/* ==================== UTILITÁRIOS ==================== */
+function nearestCity(){
+  let best=null,bd=1e18;
+  for(const c of CITIES){
+    const d=Math.hypot(c.x-G.car.x,c.y-G.car.y);
+    if(d<bd){bd=d;best=c;}
+  }
+  return best;
+}
+function pointInPoly(px,py,ring){
+  let inside=false;
+  for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+    const xi=ring[i].x,yi=ring[i].y,xj=ring[j].x,yj=ring[j].y;
+    if(((yi>py)!==(yj>py)) && (px < (xj-xi)*(py-yi)/(yj-yi)+xi)) inside=!inside;
+  }
+  return inside;
+}
+function stateAt(x,y){
+  if(STATEPOLYS){
+    for(const s of STATEPOLYS){
+      for(const ring of s.rings){
+        if(ring.length>3 && pointInPoly(x,y,ring)) return s.uf;
+      }
+    }
+  }
+  let best=null,bd=1e18;
+  for(const c of CITIES){ if(c.capital){ const d=Math.hypot(c.x-x,c.y-y); if(d<bd){bd=d;best=c.uf;} } }
+  return best;
+}
+function localTime(uf){
+  const e = ESTADOS.find(x=>x[0]===uf);
+  const tz = e?e[2]:-3;
+  const utc = new Date();
+  const h = (utc.getUTCHours()+tz)%24;
+  return { h: h<0?h+24:h, m: utc.getUTCMinutes() };
+}
+function worldToScreen(wx,wy){
+  return { x:(wx-G.cam.x)*G.zoom + W/2, y:(wy-G.cam.y)*G.zoom + H/2 };
+}
 
-  #mapa { position:fixed; inset:0; z-index:60; background:rgba(2,5,14,.96); display:none; flex-direction:column; align-items:center; justify-content:center; }
+/* ==================== PRÉDIO DAS CIDADES ==================== */
+function cityPolygons(c){
+  const seed = mulberry32(c.seed);
+  const n = c.capital ? 55 : 26 + Math.floor(seed()*18);
+  const out=[];
+  const R = c.capital?2600:1500;
+  for(let i=0;i<n;i++){
+    const ang=seed()*Math.PI*2, rr=R*(0.2+seed()*0.8);
+    const bw=60+seed()*220, bh=60+seed()*220;
+    out.push({x:c.x+Math.cos(ang)*rr, y:c.y+Math.sin(ang)*rr*0.85, w:bw, h:bh, hue:seed()});
+  }
+  return out;
+}
+const cityCache = new Map();
+function cityBuildings(c){
+  if(!cityCache.has(c.uf+c.name)) cityCache.set(c.uf+c.name, cityPolygons(c));
+  return cityCache.get(c.uf+c.name);
+}
+
+/* ==================== DESENHO DO MUNDO ==================== */
+const dayCols=["#63b4e8","#a5d8f4","#cfeaff"];
+const nightCols=["#02040c","#070c1d","#0d1530"];
+function skyColor(hour){
+  const s = Math.sin((hour-6)/12*Math.PI);
+  const day = Math.max(0, Math.min(1, s));
+  const c=[];
+  for(let i=0;i<3;i++){
+    const a=parseInt(nightCols[i].slice(1,3),16), b=parseInt(dayCols[i].slice(1,3),16);
+    c.push(Math.round(a+(b-a)*day));
+  }
+  // pôr do sol
+  const dusk = Math.max(0, 1-Math.abs(hour-6.5)/2.5, 1-Math.abs(hour-18.5)/2.5);
+  const r = Math.min(255, c[0]+dusk*80), g=Math.min(255,c[1]+dusk*50), bb=Math.max(0,c[2]-dusk*40);
+  return `rgb(${r},${g},${bb})`;
+}
+function drawFoliage(x0,y0,x1,y1){
+  if(G.zoom<0.4) return;
+  const step=520;
+  const gx0=Math.floor(x0/step), gx1=Math.floor(x1/step);
+  const gy0=Math.floor(y0/step), gy1=Math.floor(y1/step);
+  for(let gx=gx0;gx<=gx1;gx++) for(let gy=gy0;gy<=gy1;gy++){
+    const r = mulberry32((gx*374761393+gy*668265263)^0x5bd1e995)();
+    if(r<0.42){
+      const ox=(r*137.3)%1*step, oy=(r*61.7)%1*step;
+      ctx.fillStyle = r<0.3? "rgba(30,110,60,.5)" : "rgba(28,90,120,.4)";
+      ctx.beginPath();
+      ctx.arc(gx*step+ox, gy*step+oy, 60+90*r*G.zoom*4, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+}
+function drawRoads(){
+  ctx.strokeStyle="#1c2129"; ctx.lineWidth=26;
+  ROADS.forEach(([a,b])=>{
+    ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+  });
+  if(G.zoom>=1){
+    ctx.strokeStyle="#c9a227"; ctx.lineWidth=4; ctx.setLineDash([220,320]);
+    ROADS.forEach(([a,b])=>{
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+    });
+    ctx.setLineDash([]);
+  }
+}
+function drawBuildings(){
+  const vx0=G.cam.x-W/(2*G.zoom), vy0=G.cam.y-H/(2*G.zoom);
+  const vx1=G.cam.x+W/(2*G.zoom), vy1=G.cam.y+H/(2*G.zoom);
+  const nightFactor = nightF();
+  for(const c of CITIES){
+    if(c.x<vx0-9000||c.x>vx1+9000||c.y<vy0-9000||c.y>vy1+9000) continue;
+    if(G.zoom<0.9){
+      ctx.fillStyle=c.capital?"#ffd24a":"#9adfff";
+      ctx.beginPath(); ctx.arc(c.x,c.y, c.capital?1400:800, 0, Math.PI*2); ctx.fill();
+      continue;
+    }
+    const bs=cityBuildings(c);
+    for(const b of bs){
+      const lit = (b.hue>0.72) ? "rgba(255,240,150,.9)" : (nightFactor>0.5?"rgba(255,210,90,.55)":"rgba(160,210,255,.5)");
+      ctx.fillStyle = lit;
+      ctx.fillRect(b.x-b.w/2, b.y-b.h/2, b.w, b.h);
+      if(b.w>130){
+        ctx.strokeStyle="rgba(0,229,255,.25)"; ctx.lineWidth=8; ctx.strokeRect(b.x-b.w/2,b.y-b.h/2,b.w,b.h);
+      }
+    }
+    ctx.fillStyle=c.capital?"#ffd24a":"#bfe8ff";
+    ctx.beginPath(); ctx.arc(c.x,c.y,c.capital?500:320,0,Math.PI*2); ctx.fill();
+  }
+}
+function nightF(){
+  const nc=nearestCity();
+  const lt=localTime(nc?nc.uf:"SP");
+  const s=Math.sin((lt.h-6)/12*Math.PI);
+  return Math.max(0, Math.min(1, 1-s));
+}
+function drawAirport(c){
+  ctx.save();
+  ctx.translate(c.x,c.y+900);
+  ctx.fillStyle="#10151c";
+  ctx.fillRect(-1600,-100,3200,200);
+  ctx.fillStyle="#d8e6ff";
+  ctx.fillRect(-1500,-36,3000,72);
+  ctx.fillStyle="#f2b83a";
+  ctx.font="1200px serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("✈", 0,-80);
+  ctx.restore();
+}
+function drawCar(){
+  const car=G.car;
+  // rastro do turbo
+  for(const t of car.trail){
+    ctx.globalAlpha=t.a;
+    ctx.fillStyle="#7c4dff";
+    ctx.beginPath(); ctx.arc(t.x,t.y,220,0,Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  ctx.save();
+  ctx.translate(car.x,car.y);
+  ctx.rotate(car.ang+Math.PI/2);
+  ctx.shadowColor="#00e5ff"; ctx.shadowBlur=30*(nightF()*0.5+0.3);
+  ctx.fillStyle="#0d3b4d";
+  ctx.beginPath(); ctx.roundRect(-260,-480,520,980,120); ctx.fill();
+  ctx.fillStyle="#18e7ff";
+  ctx.fillRect(-90,-430,180,160);
+  ctx.fillStyle="#cfeaff";
+  ctx.fillRect(-190,-300,90,60); ctx.fillRect(100,-300,90,60);
+  ctx.fillRect(-190,180,90,60); ctx.fillRect(100,180,90,60);
+  ctx.fillStyle="#ff2d55";
+  ctx.fillRect(-90,460,180,40);
+  ctx.shadowBlur=0;
+  ctx.restore();
+  // farol à noite
+  if(nightF()>0.4 && G.car.spd>0.5){
+    ctx.save();
+    ctx.translate(car.x,car.y);
+    ctx.rotate(car.ang);
+    ctx.fillStyle="rgba(255,255,200,.12)";
+    ctx.beginPath();
+    ctx.moveTo(0,0); ctx.lineTo(-5200,-1400); ctx.lineTo(-5200,1400);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+}
+function drawLabels(){
+  const nc=nearestCity();
+  const vx0=G.cam.x-W/(2*G.zoom), vy0=G.cam.y-H/(2*G.zoom);
+  const vx1=G.cam.x+W/(2*G.zoom), vy1=G.cam.y+H/(2*G.zoom);
+  if(G.zoom>=0.02){
+    ctx.textAlign="center"; ctx.textBaseline="bottom";
+    for(const c of CITIES){
+      if(c.x<vx0-5000||c.x>vx1+5000||c.y<vy0-5000||c.y>vy1+5000) continue;
+      const s=worldToScreen(c.x,c.y);
